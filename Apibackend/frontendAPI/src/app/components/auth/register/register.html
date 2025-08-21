@@ -1,0 +1,58 @@
+<div class="register-container">
+  <h2>Inscription</h2>
+
+  <form (ngSubmit)="register()" #registerForm="ngForm">
+    <div class="form-group">
+      <label for="fullName">Nom complet:</label>
+      <input
+        type="text"
+        id="fullName"
+        name="fullName"
+        [(ngModel)]="userData.fullName"
+        required
+        placeholder="Entrez votre nom complet"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="email">Email:</label>
+      <input
+        type="email"
+        id="email"
+        name="email"
+        [(ngModel)]="userData.email"
+        required
+        placeholder="Entrez votre email"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="password">Mot de passe:</label>
+      <input
+        type="password"
+        id="password"
+        name="password"
+        [(ngModel)]="userData.password"
+        required
+        placeholder="Entrez votre mot de passe"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="role">Rôle:</label>
+      <select id="role" name="role" [(ngModel)]="userData.role" required>
+        <option value="user">Utilisateur</option>
+        <option value="admin">Administrateur</option>
+      </select>
+    </div>
+
+    <button type="submit" [disabled]="loading" class="btn-submit">
+      {{ loading ? 'Inscription...' : 'S’inscrire' }}
+    </button>
+  </form>
+
+  <div *ngIf="errorMessage" class="error">{{ errorMessage }}</div>
+  <div *ngIf="successMessage" class="success">{{ successMessage }}</div>
+
+  <button routerLink="/login" class="btn-login">Retour à la connexion</button>
+</div>

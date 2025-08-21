@@ -1,0 +1,72 @@
+<div class="container">
+<div class="logo">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Intel-logo.svg/2000px-Intel-logo.svg.png" alt="" width="130"/>
+  </div>
+<nav>
+  <ul>
+  <li> <div style="margin-bottom: 10px;">
+  <p *ngIf="user">Bienvenue  {{ user.fullName }} !</p>
+</div>
+ </li>
+
+   <button  (click)="logout()">LogOut</button>
+  </ul>
+  </nav>
+</div>
+<hr />
+<div id="wrapper">
+
+  <h2>List Products</h2>
+
+  <div>
+    <h1>{{ isEditing ? 'Edit Product' : 'Add New Product' }}</h1>
+    <form (ngSubmit)="saveProduct()">
+      <label>
+        Name:
+        <input type="text" [(ngModel)]="selectedProduct.name" name="name" required>
+      </label>
+      <label>
+        Price:
+        <input type="number" [(ngModel)]="selectedProduct.price" name="price" required>
+      </label>
+      <label>
+        Description:
+        <input type="text" [(ngModel)]="selectedProduct.description" name="description" required>
+      </label>
+      <button type="submit">{{ isEditing ? 'Update' : 'Create' }}</button>
+      <button type="button" (click)="clearSelection()">Cancel</button>
+    </form>
+  </div>
+
+  <br>
+  <p *ngIf="errorMessage" style="color:red;">{{ errorMessage }}</p>
+
+  <table id="keywords" cellspacing="0" cellpadding="0">
+    <thead>
+      <tr>
+        <th><span>Name</span></th>
+        <th><span>Price</span></th>
+        <th><span>Description</span></th>
+        <th><span>Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let product of paginatedProducts">
+        <td class="lalign">{{ product.name }}</td>
+        <td>{{ product.price | currency:'USD' }}</td>
+        <td>{{ product.description }}</td>
+        <td>
+          <button (click)="selectProduct(product)">Edit</button>
+          <button (click)="deleteProduct(product.id)">Delete</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="pagination" style="margin-top:10px;">
+    <button (click)="prevPage()" [disabled]="currentPage === 1">Prev</button>
+    <span>Page {{ currentPage }} / {{ totalPages() }}</span>
+    <button (click)="nextPage()" [disabled]="currentPage === totalPages()">Next</button>
+  </div>
+
+</div>
