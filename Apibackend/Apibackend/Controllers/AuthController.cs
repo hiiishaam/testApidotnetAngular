@@ -15,7 +15,7 @@ namespace Apibackend.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IConfiguration _config;
-        public readonly UserService _userservice;
+        private readonly UserService _userservice;
 
         public AuthController(IConfiguration config, UserService userService)
         {
@@ -23,6 +23,7 @@ namespace Apibackend.Controllers
             _userservice = userService;
         }
 
+        // -------------------- REGISTER --------------------
         [HttpPost("register")]
         public IActionResult Register([FromBody] User user)
         {
@@ -40,59 +41,59 @@ namespace Apibackend.Controllers
             }
             catch (Exception ex)
             {
-                // Log l'exception ici si nécessaire
                 return StatusCode(500, $"Erreur interne : {ex.Message}");
             }
         }
 
+        // -------------------- LOGIN --------------------
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginModel login)
         {
             if (login == null || string.IsNullOrEmpty(login.Email) || string.IsNullOrEmpty(login.Password))
             {
-                return BadRequest("Invalid login request");
+                return BadRequest("Requête de login invalide");
             }
+
             try
             {
-                User user = _userservice.GetUserByEmail(login.Email);
+                var user = _userservice.GetUserByEmail(login.Email);
                 if (user == null)
                 {
-                    return Unauthorized("User not found");
+                    return Unauthorized("Utilisateur non trouvé");
                 }
-                if (login.Email == user.Email && login.Password == user.Password)
+
+                // Vérifier le mot de passe hashé
+                bool isPasswordValid = _userservice.VerifyPassword(user, login.Password);
+                if (!isPasswordValid)
                 {
-                    var currentUser = _userservice.GetUserById(user.Id);
-                    var token = GenerateJwtToken(login.Email);
-                    return Ok(new
-                    {
-                        token,
-                        user = currentUser
-                    });
+                    return Unauthorized("Mot de passe incorrect");
                 }
+
+                // Générer le JWT
+                var token = GenerateJwtToken(user.Email, user.Role);
+
+                return Ok(new
+                {
+                    token,
+                    user
+                });
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, $"Error retrieving user: {ex.Message}");
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Erreur lors de la récupération de l'utilisateur : {ex.Message}");
             }
-
-            return Unauthorized();
         }
 
+        // -------------------- ENDPOINT PROTÉGÉ --------------------
         [HttpGet("protected")]
         [Authorize]
         public IActionResult Protected()
         {
-            try
-            {
-                return Ok("Vous êtes authentifié !");
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Erreur interne : {ex.Message}");
-            }
+            return Ok("Vous êtes authentifié !");
         }
 
-        private string GenerateJwtToken(string username)
+        // -------------------- GENERATE JWT --------------------
+        private string GenerateJwtToken(string email, string role)
         {
             var key = Encoding.ASCII.GetBytes(_config["Jwt:Key"]);
 
@@ -100,9 +101,9 @@ namespace Apibackend.Controllers
             {
                 Subject = new ClaimsIdentity(new[]
                 {
-                new Claim(ClaimTypes.Name, username),
-                new Claim(ClaimTypes.Role, "Admin")
-            }),
+                    new Claim(ClaimTypes.Name, email),
+                    new Claim(ClaimTypes.Role, role)
+                }),
                 Expires = DateTime.UtcNow.AddHours(1),
                 Issuer = _config["Jwt:Issuer"],
                 Audience = _config["Jwt:Audience"],

@@ -1,9 +1,13 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.EntityFrameworkCore;
 using Apibackend.Data;
+using Apibackend.Hubs;
 using Apibackend.Models;
 using Apibackend.Services;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Moq;
 using System.Linq;
+using static Apibackend.Hubs.Hubs;
 
 namespace testApi
 {
@@ -12,17 +16,28 @@ namespace testApi
     {
         private AppDbContext _context;
         private ProductService _service;
+        private Mock<IHubContext<ProductHub>> _hubContextMock;
 
         [TestInitialize]
         public void Setup()
         {
-            // Chaque test utilise une base InMemory unique grâce à Guid
+            // Créer une base InMemory unique
             var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(databaseName: System.Guid.NewGuid().ToString())
                 .Options;
 
             _context = new AppDbContext(options);
-            _service = new ProductService(_context);
+
+            // Mock HubContext
+            _hubContextMock = new Mock<IHubContext<ProductHub>>();
+
+            // Pour éviter les erreurs, mocker Clients.All.SendAsync
+            var clientsMock = new Mock<IHubClients>();
+            var clientProxyMock = new Mock<IClientProxy>();
+            clientsMock.Setup(c => c.All).Returns(clientProxyMock.Object);
+            _hubContextMock.Setup(h => h.Clients).Returns(clientsMock.Object);
+
+            _service = new ProductService(_context, _hubContextMock.Object);
         }
 
         [TestMethod]

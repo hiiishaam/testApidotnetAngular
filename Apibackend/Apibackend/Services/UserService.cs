@@ -1,57 +1,73 @@
 ﻿using Apibackend.Data;
 using Apibackend.Models;
+using Microsoft.AspNetCore.Identity;
 
 namespace Apibackend.Services
 {
     public class UserService
     {
-        public AppDbContext _db;
+        private readonly AppDbContext _db;
+
         public UserService(AppDbContext db)
         {
             _db = db;
         }
+
         /// <summary>
-        /// get users
+        /// Récupérer tous les utilisateurs
         /// </summary>
-        /// <returns></returns>
         public List<User> GetAllUsers()
         {
             return _db.Users.ToList();
         }
 
+        /// <summary>
+        /// Récupérer un utilisateur par Id
+        /// </summary>
         public User GetUserById(int id)
         {
             return _db.Users.FirstOrDefault(x => x.Id == id);
         }
+
+        /// <summary>
+        /// Ajouter un utilisateur avec mot de passe hashé
+        /// </summary>
         public User AddUser(User user)
         {
+            var passwordHasher = new PasswordHasher<User>();
+            user.Password = passwordHasher.HashPassword(user, user.Password);
+
             _db.Users.Add(user);
             _db.SaveChanges();
             return user;
         }
+
+        /// <summary>
+        /// Mettre à jour un utilisateur (hash si mot de passe modifié)
+        /// </summary>
         public User UpdateUser(int id, User user)
         {
-            try
+            var existingUser = _db.Users.FirstOrDefault(p => p.Id == id);
+            if (existingUser == null) return null;
+
+            existingUser.FullName = user.FullName;
+            existingUser.Email = user.Email;
+            existingUser.Role = user.Role;
+
+            if (!string.IsNullOrEmpty(user.Password))
             {
-                var existingUser = _db.Users.FirstOrDefault(p => p.Id == id);
-                if (existingUser == null)
-                {
-                    return null;
-                }
-                existingUser.FullName = user.FullName;
-                existingUser.Email = user.Email;
-                existingUser.Password = user.Password;
-                existingUser.Role = user.Role;
-                _db.Users.Update(existingUser);
-                _db.SaveChanges();
-                return existingUser;
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error modify User: " + ex.Message);
+                var passwordHasher = new PasswordHasher<User>();
+                existingUser.Password = passwordHasher.HashPassword(existingUser, user.Password);
             }
 
+            _db.Users.Update(existingUser);
+            _db.SaveChanges();
+            return existingUser;
         }
+
+        /// <summary>
+        /// Supprimer un utilisateur
+        /// </summary>
         public void DeleteUser(int id)
         {
             var user = _db.Users.FirstOrDefault(x => x.Id == id);
@@ -61,24 +77,23 @@ namespace Apibackend.Services
                 _db.SaveChanges();
             }
         }
+
+        /// <summary>
+        /// Récupérer un utilisateur par email
+        /// </summary>
         public User GetUserByEmail(string email)
         {
-            try
-            {
-                // Essaie de récupérer l'utilisateur
-                var utilisateur = _db.Users.FirstOrDefault(u => u.Email == email);
-
-                // Si aucun utilisateur trouvé, retourne null
-                return utilisateur;
-            }
-            catch (Exception ex)
-            {
-                // Ici on capture les erreurs réelles (ex: problème DB)
-                // On peut logger l'erreur puis renvoyer null ou relancer l'exception
-                Console.WriteLine("Erreur lors de la récupération de l'utilisateur : " + ex.Message);
-                return null;
-            }
+            return _db.Users.FirstOrDefault(u => u.Email == email);
         }
 
+        /// <summary>
+        /// Vérifier le mot de passe pour login
+        /// </summary>
+        public bool VerifyPassword(User user, string password)
+        {
+            var passwordHasher = new PasswordHasher<User>();
+            var result = passwordHasher.VerifyHashedPassword(user, user.Password, password);
+            return result == PasswordVerificationResult.Success;
+        }
     }
 }

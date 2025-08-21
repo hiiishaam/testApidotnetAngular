@@ -1,17 +1,24 @@
 ﻿using Apibackend.Data;
 using Apibackend.Events;
+using Apibackend.Hubs;
 using Apibackend.Models;
+using Microsoft.AspNetCore.SignalR;
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using static Apibackend.Hubs.Hubs;
 
 namespace Apibackend.Services
 {
     public class ProductService : IProductService
     {
         private readonly AppDbContext _context;
+        private readonly IHubContext<ProductHub> _hubContext;
 
-        public ProductService(AppDbContext context)
+        public ProductService(AppDbContext context, IHubContext<ProductHub> hubContext)
         {
             _context = context;
+            _hubContext = hubContext;
         }
 
         public List<Product> GetAllProduct()
@@ -29,8 +36,9 @@ namespace Apibackend.Services
             _context.Products.Add(product);
             _context.SaveChanges();
 
-            // Émettre un event
-            DispatchEvent(new ProductCreatedEvent(product.Id, product.Name));
+            // Émettre un event SignalR
+            var evt = new ProductCreatedEvent(product.Id, product.Name);
+            DispatchEvent("ProductCreated", evt);
 
             return product;
         }
@@ -48,8 +56,9 @@ namespace Apibackend.Services
             _context.Products.Update(product);
             _context.SaveChanges();
 
-            // Émettre un event
-            DispatchEvent(new ProductUpdatedEvent(product.Id, product.Name, product.Price));
+            // Émettre un event SignalR
+            var evt = new ProductUpdatedEvent(product.Id, product.Name, product.Price);
+            DispatchEvent("ProductUpdated", evt);
 
             return product;
         }
@@ -62,17 +71,18 @@ namespace Apibackend.Services
             _context.Products.Remove(product);
             _context.SaveChanges();
 
-            // Émettre un event
-            DispatchEvent(new ProductDeletedEvent(id));
+            // Émettre un event SignalR
+            var evt = new ProductDeletedEvent(id);
+            DispatchEvent("ProductDeleted", evt);
 
             return true;
         }
 
-        // Méthode simplifiée pour dispatcher les events
-        private void DispatchEvent(object domainEvent)
+        // Envoi de l’event via SignalR
+        private void DispatchEvent(string eventName, object domainEvent)
         {
-            // Ici tu peux logger, envoyer à un bus, ou notifier d'autres services
-            Console.WriteLine($"Domain Event déclenché : {domainEvent.GetType().Name}");
+            _hubContext.Clients.All.SendAsync(eventName, domainEvent);
+            Console.WriteLine($"📢 Event envoyé : {eventName} -> {domainEvent}");
         }
     }
 }
